@@ -22,6 +22,9 @@ trait ScalarTypeHandler {
     */
   def generateReader(c: blackbox.Context)(src: c.Tree): c.Tree
 
+  def generateLimitedReader(c: blackbox.Context)(src: c.Tree, limit: Int): c.Tree =
+    generateReader(c)(src)
+
   /**
     * Generate writer for specified type
     * @param c Macro context

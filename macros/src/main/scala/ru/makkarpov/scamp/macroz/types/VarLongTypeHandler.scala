@@ -1,24 +1,23 @@
 package ru.makkarpov.scamp.macroz.types
 
-import akka.util.{ByteIterator, ByteString, ByteStringBuilder}
 import ru.makkarpov.scamp.macroz.ScalarTypeHandler
 
 import scala.reflect.macros.blackbox
 
-class LongTypeHandler extends ScalarTypeHandler {
+class VarLongTypeHandler extends ScalarTypeHandler {
   override def appliesTo(c: blackbox.Context)(tpe: c.Type): Boolean = tpe weak_<:< c.universe.typeOf[Long]
 
   override def generateReader(c: blackbox.Context)(src: c.Tree): c.Tree = {
     import c.universe._
 
-    q"$src.getLong(_root_.java.nio.ByteOrder.BIG_ENDIAN)"
+    q"_root_.ru.makkarpov.scamp.VarIntUtils.readVarLong($src)"
   }
 
   override def generateWriter(c: blackbox.Context)(data: c.Tree, dst: c.Tree): c.Tree = {
     import c.universe._
 
-    q"$dst.putLong($data)(_root_.java.nio.ByteOrder.BIG_ENDIAN)"
+    q"_root_.ru.makkarpov.scamp.VarIntUtils.writeVarLong($dst, $data)"
   }
 
-  override def toString: String = "long"
+  override def toString: String = "varlong"
 }

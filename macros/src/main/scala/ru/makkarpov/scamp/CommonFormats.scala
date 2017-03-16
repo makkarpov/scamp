@@ -1,14 +1,27 @@
 package ru.makkarpov.scamp
 
-import akka.util.{ByteIterator, ByteString, ByteStringBuilder}
+import java.io.IOException
+import java.nio.charset.StandardCharsets
+
+import akka.util.{ByteIterator, ByteStringBuilder}
 
 object CommonFormats {
-  def readLong(src: ByteIterator): Long = ???
-  def writeLong(l: Long, dst: ByteStringBuilder): Unit = ???
+  def readString(src: ByteIterator, maxLength: Short = Short.MaxValue): String = {
+    val len = VarIntUtils.readVarInt(src)
 
-  def readString(src: ByteIterator): String = ???
-  def writeString(s: String, dst: ByteStringBuilder): Unit = ???
+    if (len > maxLength)
+      throw new IOException("Received too long string")
 
-  def readRawBytes(src: ByteIterator): ByteString = src.toByteString
-  def writeRawBytes(data: ByteString, dst: ByteStringBuilder): Unit = dst ++= data
+    val buf = new Array[Byte](len)
+    src.getBytes(buf)
+
+    new String(buf, StandardCharsets.UTF_8)
+  }
+
+  def writeString(s: String, dst: ByteStringBuilder): Unit = {
+    val buf = s.getBytes(StandardCharsets.UTF_8)
+
+    VarIntUtils.writeVarLong(dst, buf.length)
+    dst.putBytes(buf)
+  }
 }

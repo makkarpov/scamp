@@ -10,11 +10,13 @@ class ShittyTest {
   val r =
     protocol[Packet](
       0 -> packet(
-        selector(string)(
+        selector(limited(100, string))(
           "shit1" -> packet[FirstPacket]( string ),
           "shit2" -> packet[SecondPacket]( long ),
           defaultNamed("ch") -> packet[ThirdPacket] ( "msg" -> rawBytes )
         )
       )
     )
+
+
 }

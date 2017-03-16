@@ -8,7 +8,14 @@ trait Utils { this: GenerateProtocol =>
   val ownPkg = q"_root_.ru.makkarpov.scamp"
   val predefPkg = q"_root_.scala.Predef"
 
-  case class SelectorStruct(discriminator: ScalarTypeHandler, options: Seq[(Tree, Tree)])
+  case class SelectorStruct(discriminator: FieldStruct, options: Seq[(Tree, Tree)])
+
+  case class FieldStruct(name: Option[String], handler: ScalarTypeHandler, limit: Option[Int]) {
+    def generateReader(src: Tree): Tree = limit match {
+      case None => handler.generateReader(c)(src)
+      case Some(x) => handler.generateLimitedReader(c)(src, x)
+    }
+  }
 
   object protocolDef {
     // tree -> name, type arg, args
@@ -21,11 +28,18 @@ trait Utils { this: GenerateProtocol =>
 
   object scalarTypeDef {
     // tree -> field name, type handler
-    def unapply(x: Tree): Option[(Option[String], ScalarTypeHandler)] = x match {
+    def unapply(x: Tree): Option[FieldStruct] = x match {
       case protocolDef("namedDef", _, Seq(tuple2(nameTree, defTree))) =>
         nameTree match {
-          case q"${name: String}" => unapply(defTree).map { case (_, cls) => Some(name) -> cls }
+          case q"${name: String}" => unapply(defTree).map(_.copy(name = Some(name)))
           case _ => abort("field name should be a string literal, found instead: " + showCode(nameTree))
+        }
+
+      case protocolDef("limited", _, Seq(limitTree, defTree)) =>
+        limitTree match {
+          case q"${limit: Int}" if limit > 0 => unapply(defTree).map(_.copy(limit = Some(limit)))
+          case q"${limit: Int}" => abort(s"limit must be positive, $limit found instead")
+          case _ => abort("limit must be an integer literal, found instead: " + showCode(limitTree))
         }
 
       case q"$base.$arg" =>
@@ -34,7 +48,8 @@ trait Utils { this: GenerateProtocol =>
           .filter(_ <:< weakTypeOf[scalarType[_]])
           .collect {
             case TypeRef(_, _, args) =>
-              None -> Class.forName(args.head.typeSymbol.fullName).asSubclass(classOf[ScalarTypeHandler]).newInstance()
+              val handler = Class.forName(args.head.typeSymbol.fullName).asSubclass(classOf[ScalarTypeHandler]).newInstance()
+              FieldStruct(None, handler, None)
           }
           .headOption
 
@@ -45,8 +60,8 @@ trait Utils { this: GenerateProtocol =>
   object selectorDef {
     def unapply(x: Tree): Option[SelectorStruct] = x match {
       case protocolDef("selector", baseType, Seq(discTree, choices @ _*)) =>
-        val discHandler = discTree match {
-          case scalarTypeDef(_, handler) => handler
+        val discField = discTree match {
+          case scalarTypeDef(data) => data
           case _ => abort("discriminator must be a scalar type")
         }
 
@@ -59,11 +74,11 @@ trait Utils { this: GenerateProtocol =>
           case defaultNamedDef(_) =>
           case _ =>
             val tpe = c.typecheck(k, silent = true).tpe
-            if (!discHandler.appliesTo(c)(tpe))
-              abort(s"discriminator [$discHandler] could not be applied to value of type [$tpe]")
+            if (!discField.handler.appliesTo(c)(tpe))
+              abort(s"discriminator [${discField.handler}] could not be applied to value of type [$tpe]")
         }
 
-        Some(SelectorStruct(discHandler, tupleChoices))
+        Some(SelectorStruct(discField, tupleChoices))
       case _ => None
     }
   }

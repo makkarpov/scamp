@@ -6,7 +6,13 @@ trait SerializerGenerator { this: GenerateProtocol =>
   import c.universe._
 
   sealed trait FieldLike
-  case class Field(name: Option[String], varName: TermName, handler: ScalarTypeHandler) extends FieldLike
+  case class Field(varName: TermName, data: FieldStruct) extends FieldLike {
+    def name: Option[String] = data.name
+    def handler: ScalarTypeHandler = data.handler
+    def limit: Option[Int] = data.limit
+    def generateReader(src: Tree): Tree = data.generateReader(src)
+  }
+
   case class Discriminator(value: Tree, handler: ScalarTypeHandler) extends FieldLike
 
   case class ReadGenerationContext(fields: Seq[Field], postFieldRead: Seq[Tree], packetType: Type)
@@ -15,9 +21,9 @@ trait SerializerGenerator { this: GenerateProtocol =>
   def decodeFields(args: Seq[Tree], needNames: Boolean): (Seq[Field], Option[SelectorStruct], Seq[Field]) =
     args.foldLeft(Seq.empty[Field], Option.empty[SelectorStruct], Seq.empty[Field]) {
       case ((pre, sel, post), x) => x match {
-        case scalarTypeDef(name, handler) =>
+        case scalarTypeDef(data) =>
           val varName = TermName(if (needNames) c.freshName("field") else "")
-          val field = Field(name, varName, handler)
+          val field = Field(varName, data)
           if (sel.isEmpty) (pre :+ field, sel, post)
           else (pre, sel, post :+ field)
 
@@ -37,8 +43,8 @@ trait SerializerGenerator { this: GenerateProtocol =>
       abort(s"non-unique field names: ${conflicts.mkString(", ")}")
 
     val classFields = target.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.head
-    val namedFields = fields.collect { case x @ Field(Some(name), _, _) => name -> x }.toMap
-    val seqFields = fields.collect { case x @ Field(None, _, _) => x }
+    val namedFields = fields.collect { case x @ Field(_, FieldStruct(Some(name), _, _)) => name -> x }.toMap
+    val seqFields = fields.collect { case x @ Field(_, FieldStruct(None, _, _)) => x }
 
     val (_, ret) = classFields.foldLeft(0, Seq.empty[Field]) {
       case ((idx, acc), f) =>
@@ -73,7 +79,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
       def decode(ctx: ReadGenerationContext, args: Seq[Tree]): Tree = {
         // There should be only one selector per nesting level. So split it to header, selector and footer
         val (preFields, selector, postFields) = decodeFields(args, needNames = true)
-        val preFieldsRead = preFields.map(x => q"val ${x.varName} = ${x.handler.generateReader(c)(q"$srcVar")}")
+        val preFieldsRead = preFields.map(x => q"val ${x.varName} = ${x.generateReader(q"$srcVar")}")
         val postFieldsRead = ctx.postFieldRead
 
         selector match {
@@ -83,7 +89,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
             val matches = sel.options.map {
               case (defaultNamedDef(name), packetDef(tpe, subArgs)) =>
                 val matchedVar = TermName(c.freshName("matched"))
-                val field = Field(Some(name), matchedVar, sel.discriminator)
+                val field = Field(matchedVar, sel.discriminator.copy(name = Some(name)))
                 val subCtx = ReadGenerationContext((ctx.fields ++ preFields :+ field) ++ postFields, postFieldsRead, tpe)
                 cq"$matchedVar => ${decode(subCtx, subArgs)}"
 
@@ -94,7 +100,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
 
             q"""
               ..$preFieldsRead
-              val $discrField = ${sel.discriminator.generateReader(c)(q"$srcVar")}
+              val $discrField = ${sel.discriminator.generateReader(q"$srcVar")}
               $discrField match { case ..$matches }
             """
 
@@ -122,7 +128,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
           case Some(sel) =>
             sel.options.flatMap {
               case (defaultNamedDef(name), packetDef(tpe, subArgs)) =>
-                val newField = Field(Some(name), TermName(""), sel.discriminator)
+                val newField = Field(TermName(""), sel.discriminator.copy(name = Some(name)))
                 val subCtx = WriteGenerationContext(
                   preFields = ctx.preFields ++ preFields :+ newField,
                   postFields = postFields ++ ctx.postFields,
@@ -133,7 +139,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
 
               case (k, packetDef(tpe, subArgs)) =>
                 val subCtx = WriteGenerationContext(
-                  preFields = ctx.preFields ++ preFields :+ Discriminator(k, sel.discriminator),
+                  preFields = ctx.preFields ++ preFields :+ Discriminator(k, sel.discriminator.handler),
                   postFields = postFields ++ ctx.postFields,
                   packetType = tpe
                 )

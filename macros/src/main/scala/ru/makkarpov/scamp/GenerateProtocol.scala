@@ -49,11 +49,11 @@ class GenerateProtocol(val c: blackbox.Context) extends SerializerGenerator with
       new $ownPkg.PacketSerializer.Default[$packetType] {
         ..$fieldAssignments
 
-        val packetIds = $predefPkg.Map[$predefPkg.Int, $ownPkg.InternalSerializer[_ <: $packetType]](..$readEntries)
+        val packetIds = $predefPkg.Map[_root_.scala.Int, $ownPkg.InternalSerializer[_ <: $packetType]](..$readEntries)
         val packetTypes = $predefPkg.Map[_root_.java.lang.Class[_ <: $packetType], $ownPkg.InternalSerializer[_ <: $packetType]](..$writeEntries)
 
         def forPacket(p: $packetType): Ser = packetTypes(p.getClass)
-        def forId(id: $predefPkg.Int): Ser = packetIds(id)
+        def forId(id: _root_.scala.Int): Ser = packetIds(id)
       }
     """
 

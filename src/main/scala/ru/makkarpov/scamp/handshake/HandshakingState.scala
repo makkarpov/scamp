@@ -6,9 +6,7 @@ object HandshakingState extends ProtocolState {
   import ru.makkarpov.scamp.ProtocolDef._
   import ru.makkarpov.scamp.Types._
 
-  override val serverPackets: PacketSerializer[Packet] = protocol()
-
-  override val clientPackets: PacketSerializer[Packet] = protocol(
+  override val serverPackets: PacketSerializer[Packet] = protocol(
     0 -> packet[PacketHandshake](
       "protocolVersion" -> varInt,
       "serverAddress" -> string(maxLength = 64),
@@ -16,4 +14,6 @@ object HandshakingState extends ProtocolState {
       "nextState" -> enum(PacketHandshake.NextState)
     )
   )
+
+  override val clientPackets: PacketSerializer[Packet] = protocol()
 }

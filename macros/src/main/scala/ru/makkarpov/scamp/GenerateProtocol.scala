@@ -59,7 +59,7 @@ class GenerateProtocol(val c: blackbox.Context) extends SerializerGenerator with
       }
     """
 
-    abort(showCode(ret))
+//    abort(showCode(ret))
 
     ret
   }

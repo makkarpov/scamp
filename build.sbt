@@ -6,7 +6,9 @@ val commonSettings = Seq(
   organization := "ru.makkarpov",
   version := "1.0",
 
-  scalaVersion := "2.11.7"
+  scalaVersion := "2.11.7",
+
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 )
 
 lazy val macros = project

@@ -10,25 +10,21 @@ object PacketSerializer {
   implicit val byteOrder = ByteOrder.BIG_ENDIAN
 
   abstract class Default[T] extends PacketSerializer[T] {
-    type Ser = InternalSerializer[_ <: T]
+    def packetId(packet: T): Int
+    def packetSerializer(id: Int): InternalSerializer[_ <: T]
 
-    def forPacket(packet: T): Ser
-    def forId(id: Int): Ser
-
-    override def write(packet: T): ByteString = {
+    override def write(packet: T): (Int, ByteString) = {
+      val id = packetId(packet)
       val dst = new ByteStringBuilder
-      forPacket(packet).asInstanceOf[InternalSerializer[T]].write(packet, dst)
-      dst.result()
+      packetSerializer(id).asInstanceOf[InternalSerializer[T]].write(packet, dst)
+      id -> dst.result()
     }
 
-    override def read(src: ByteString): T = {
-      val iter = src.iterator
-      forId(iter.getInt).read(iter)
-    }
+    override def read(id: Int, src: ByteString): T = packetSerializer(id).read(src.iterator)
   }
 }
 
 trait PacketSerializer[T] {
-  def write(packet: T): ByteString
-  def read(src: ByteString): T
+  def write(packet: T): (Int, ByteString)
+  def read(id: Int, src: ByteString): T
 }

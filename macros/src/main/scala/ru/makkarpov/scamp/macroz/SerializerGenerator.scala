@@ -8,12 +8,13 @@ trait SerializerGenerator { this: GenerateProtocol =>
   sealed trait FieldLike
   case class Field(varName: TermName, data: FieldStruct) extends FieldLike {
     def name: Option[String] = data.name
-    def handler: ScalarTypeHandler = data.handler
-    def limit: Option[Int] = data.limit
-    def generateReader(src: Tree): Tree = data.generateReader(src)
+
+    def appliesTo(t: Type): Boolean = data.appliesTo(t)
+    def makeReader(src: Tree): Tree = data.makeReader(src)
+    def makeWriter(dst: Tree, data: Tree): Tree = this.data.makeWriter(dst, data)
   }
 
-  case class Discriminator(value: Tree, handler: ScalarTypeHandler) extends FieldLike
+  case class Discriminator(value: Tree, handler: FieldStruct) extends FieldLike
 
   case class ReadGenerationContext(fields: Seq[Field], postFieldRead: Seq[Tree], packetType: Type)
   case class WriteGenerationContext(preFields: Seq[FieldLike], postFields: Seq[FieldLike], packetType: Type)
@@ -43,8 +44,8 @@ trait SerializerGenerator { this: GenerateProtocol =>
       abort(s"non-unique field names: ${conflicts.mkString(", ")}")
 
     val classFields = target.typeSymbol.asClass.primaryConstructor.asMethod.paramLists.head
-    val namedFields = fields.collect { case x @ Field(_, FieldStruct(Some(name), _, _)) => name -> x }.toMap
-    val seqFields = fields.collect { case x @ Field(_, FieldStruct(None, _, _)) => x }
+    val namedFields = fields.collect { case x @ Field(_, FieldStruct(Some(name), _)) => name -> x }.toMap
+    val seqFields = fields.collect { case x @ Field(_, FieldStruct(None, _)) => x }
 
     val (_, ret) = classFields.foldLeft(0, Seq.empty[Field]) {
       case ((idx, acc), f) =>
@@ -56,8 +57,8 @@ trait SerializerGenerator { this: GenerateProtocol =>
             abort(s"not enough sequential fields to fill this class: unmatched name: $name")
         }
 
-        if (!field.handler.appliesTo(c)(f.typeSignature))
-          abort(s"field handler [${field.handler}] cannot be applied to [${f.typeSignature}]")
+        if (!field.appliesTo(f.typeSignature))
+          abort(s"field handler [${field.data.provider}] cannot be applied to [${f.typeSignature}]")
 
         (newIdx, acc :+ field)
     }
@@ -79,7 +80,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
       def decode(ctx: ReadGenerationContext, args: Seq[Tree]): Tree = {
         // There should be only one selector per nesting level. So split it to header, selector and footer
         val (preFields, selector, postFields) = decodeFields(args, needNames = true)
-        val preFieldsRead = preFields.map(x => q"val ${x.varName} = ${x.generateReader(q"$srcVar")}")
+        val preFieldsRead = preFields.map(x => q"val ${x.varName} = ${x.makeReader(q"$srcVar")}")
         val postFieldsRead = ctx.postFieldRead
 
         selector match {
@@ -100,7 +101,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
 
             q"""
               ..$preFieldsRead
-              val $discrField = ${sel.discriminator.generateReader(q"$srcVar")}
+              val $discrField = ${sel.discriminator.makeReader(q"$srcVar")}
               $discrField match { case ..$matches }
             """
 
@@ -139,7 +140,7 @@ trait SerializerGenerator { this: GenerateProtocol =>
 
               case (k, packetDef(tpe, subArgs)) =>
                 val subCtx = WriteGenerationContext(
-                  preFields = ctx.preFields ++ preFields :+ Discriminator(k, sel.discriminator.handler),
+                  preFields = ctx.preFields ++ preFields :+ Discriminator(k, sel.discriminator),
                   postFields = postFields ++ ctx.postFields,
                   packetType = tpe
                 )
@@ -159,8 +160,8 @@ trait SerializerGenerator { this: GenerateProtocol =>
             }.toMap
 
             val writeTrees = fields.map {
-              case f: Field => f.handler.generateWriter(c)(fieldExtractors(f), q"$dstVar")
-              case d: Discriminator => d.handler.generateWriter(c)(d.value, q"$dstVar")
+              case f: Field => f.makeWriter(q"$dstVar", fieldExtractors(f))
+              case d: Discriminator => d.handler.makeWriter(q"$dstVar", d.value)
             }
 
             Seq(ctx.packetType -> cq"$matchedVar: ${ctx.packetType} => ..$writeTrees")

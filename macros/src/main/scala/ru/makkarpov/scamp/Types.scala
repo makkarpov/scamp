@@ -1,42 +1,42 @@
 package ru.makkarpov.scamp
 
-import ru.makkarpov.scamp.macroz.scalarType
-import ru.makkarpov.scamp.macroz.types._
+import ru.makkarpov.scamp.macroz.protocolType
+import ru.makkarpov.scamp.types._
 
 object Types {
-  @scalarType[ByteTypeHandler]
+  @protocolType[ByteType]
   def byte = ProtocolDef
 
-  @scalarType[DoubleTypeHandler]
+  @protocolType[DoubleType]
   def double = ProtocolDef
 
-  @scalarType[FloatTypeHandler]
+  @protocolType[EnumerationType]
+  def enum(enumInstance: Enumeration) = ProtocolDef
+
+  @protocolType[FloatType]
   def float = ProtocolDef
 
-  @scalarType[IntTypeHandler]
+  @protocolType[IntType]
   def int = ProtocolDef
 
-  @scalarType[LongTypeHandler]
+  @protocolType[LongType]
   def long = ProtocolDef
 
-  @scalarType[RawBytesHandler]
-  def rawBytes = ProtocolDef
-
-  @scalarType[ShortTypeHandler]
+  @protocolType[ShortType]
   def short = ProtocolDef
 
-  @scalarType[StringTypeHandler]
-  def string = ProtocolDef
+  @protocolType[StringType]
+  def string(maxLength: Int = Short.MaxValue) = ProtocolDef
 
-  @scalarType[UnsignedByteTypeHandler]
+  @protocolType[UnsignedByteType]
   def unsignedByte = ProtocolDef
 
-  @scalarType[UnsignedShortTypeHandler]
+  @protocolType[UnsignedShortType]
   def unsignedShort = ProtocolDef
 
-  @scalarType[VarIntTypeHandler]
+  @protocolType[VarIntType]
   def varInt = ProtocolDef
 
-  @scalarType[VarLongTypeHandler]
+  @protocolType[VarLongType]
   def varLong = ProtocolDef
 }

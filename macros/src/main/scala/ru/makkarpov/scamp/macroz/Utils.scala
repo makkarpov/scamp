@@ -2,6 +2,8 @@ package ru.makkarpov.scamp.macroz
 
 import ru.makkarpov.scamp.GenerateProtocol
 
+import scala.reflect.macros.blackbox
+
 trait Utils { this: GenerateProtocol =>
   import c.universe._
 
@@ -10,11 +12,12 @@ trait Utils { this: GenerateProtocol =>
 
   case class SelectorStruct(discriminator: FieldStruct, options: Seq[(Tree, Tree)])
 
-  case class FieldStruct(name: Option[String], handler: ScalarTypeHandler, limit: Option[Int]) {
-    def generateReader(src: Tree): Tree = limit match {
-      case None => handler.generateReader(c)(src)
-      case Some(x) => handler.generateLimitedReader(c)(src, x)
-    }
+  case class FieldStruct(name: Option[String], provider: TypeProvider) {
+    private def cast[A, B](x: A): B = x.asInstanceOf[B]
+
+    def appliesTo(t: Type): Boolean = provider.appliesTo(cast(t))
+    def makeReader(src: Tree): Tree = cast(provider.makeReader(cast(src)))
+    def makeWriter(dst: Tree, data: Tree): Tree = cast(provider.makeWriter(cast(dst), cast(data)))
   }
 
   object protocolDef {
@@ -22,6 +25,8 @@ trait Utils { this: GenerateProtocol =>
     def unapply(x: Tree): Option[(String, Type, Seq[Tree])] = x match {
       case q"ProtocolDef.$name[$tpe](...$args)" => Some((name.decodedName.toString, tpe.tpe, args.flatten))
       case q"ProtocolDef.$name(...$args)" => Some((name.decodedName.toString, typeOf[Nothing], args.flatten))
+      case q"$prefix.ProtocolDef.$name[$tpe](...$args)" => Some((name.decodedName.toString, tpe.tpe, args.flatten))
+      case q"$prefix.ProtocolDef.$name(...$args)" => Some((name.decodedName.toString, typeOf[Nothing], args.flatten))
       case _ => None
     }
   }
@@ -35,21 +40,17 @@ trait Utils { this: GenerateProtocol =>
           case _ => abort("field name should be a string literal, found instead: " + showCode(nameTree))
         }
 
-      case protocolDef("limited", _, Seq(limitTree, defTree)) =>
-        limitTree match {
-          case q"${limit: Int}" if limit > 0 => unapply(defTree).map(_.copy(limit = Some(limit)))
-          case q"${limit: Int}" => abort(s"limit must be positive, $limit found instead")
-          case _ => abort("limit must be an integer literal, found instead: " + showCode(limitTree))
-        }
-
-      case q"$base.$arg" =>
+      case q"$base.$arg(...$args)" =>
         base.symbol.asModule.moduleClass.asClass.toType.declaration(arg).annotations
           .map(_.tpe)
-          .filter(_ <:< weakTypeOf[scalarType[_]])
+          .filter(_ <:< weakTypeOf[protocolType[_]])
           .collect {
-            case TypeRef(_, _, args) =>
-              val handler = Class.forName(args.head.typeSymbol.fullName).asSubclass(classOf[ScalarTypeHandler]).newInstance()
-              FieldStruct(None, handler, None)
+            case TypeRef(_, _, typeArgs) =>
+              val provider = Class.forName(typeArgs.head.typeSymbol.fullName)
+                .asSubclass(classOf[TypeProvider])
+                .getConstructor(classOf[blackbox.Context], classOf[Seq[Tree]])
+                .newInstance(c, args.flatten)
+              FieldStruct(None, provider)
           }
           .headOption
 
@@ -74,8 +75,8 @@ trait Utils { this: GenerateProtocol =>
           case defaultNamedDef(_) =>
           case _ =>
             val tpe = c.typecheck(k, silent = true).tpe
-            if (!discField.handler.appliesTo(c)(tpe))
-              abort(s"discriminator [${discField.handler}] could not be applied to value of type [$tpe]")
+            if (!discField.appliesTo(tpe))
+              abort(s"discriminator [${discField.provider}] could not be applied to value of type [$tpe]")
         }
 
         Some(SelectorStruct(discField, tupleChoices))

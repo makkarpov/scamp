@@ -7,6 +7,9 @@ object Types {
   @protocolType[ByteType]
   def byte = ProtocolDef
 
+  @protocolType[ByteStringType]
+  def byteString(maxLength: Int = Short.MaxValue) = ProtocolDef
+
   @protocolType[DoubleType]
   def double = ProtocolDef
 

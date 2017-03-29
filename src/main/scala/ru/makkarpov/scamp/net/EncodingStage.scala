@@ -6,6 +6,7 @@ import akka.util.ByteString
 import ru.makkarpov.scamp.cipher.CipherMessage
 import ru.makkarpov.scamp.protocol.handshake.PacketHandshake
 import ru.makkarpov.scamp.protocol.handshake.PacketHandshake.NextState
+import ru.makkarpov.scamp.protocol.login.client.{PacketLoginSuccess, PacketSetCompression}
 import ru.makkarpov.scamp.{Packet, ProtocolState}
 
 object EncodingStage {
@@ -31,8 +32,12 @@ class EncodingStage(isServer: Boolean) extends GraphStage[BidiShape[ByteString, 
         case PacketHandshake(_, _, _, nextState) if isServer =>
           state = NextState.toProtocol(nextState).toState(isServer)
 
-        // TODO: Login success on client
-        // TODO: Set compression on client
+        case PacketSetCompression(threshold) if !isServer =>
+          compressor = Compressor(threshold, 6)
+
+        case PacketLoginSuccess(_, _) if !isServer =>
+          state = ProtocolState.Game.toState(isServer)
+
         case _ =>
       }
 
@@ -40,8 +45,12 @@ class EncodingStage(isServer: Boolean) extends GraphStage[BidiShape[ByteString, 
         case PacketHandshake(_, _, _, nextState) if !isServer =>
           state = NextState.toProtocol(nextState).toState(isServer)
 
-        // TODO: Login success on server
-        // TODO: Set compression on server
+        case PacketSetCompression(threshold) if isServer =>
+          compressor = Compressor(threshold, 6)
+
+        case PacketLoginSuccess(_, _) if isServer =>
+          state = ProtocolState.Game.toState(isServer)
+
         case _ =>
       }
 
@@ -60,8 +69,8 @@ class EncodingStage(isServer: Boolean) extends GraphStage[BidiShape[ByteString, 
       setHandler(pckIn, new InHandler {
         override def onPush(): Unit = grab(pckIn) match {
           case meta: Packet.Meta => meta match {
-            case Packet.EnableEncryption(key, factory) =>
-              emit(netOut, CipherMessage.Enable(key, factory))
+            case Packet.EnableEncryption(key, factory, data) =>
+              emit(netOut, CipherMessage.Enable(key, factory, data.map(x => compressor.compress(state.write(x)))))
           }
 
           case other =>

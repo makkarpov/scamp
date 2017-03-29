@@ -11,7 +11,7 @@ object PacketHandshake {
 
     def toProtocol(v: Value): ProtocolState = v match {
       case Status => ProtocolState.Status
-      case Login => throw new RuntimeException("No login state yet")
+      case Login => ProtocolState.Login
     }
   }
 }

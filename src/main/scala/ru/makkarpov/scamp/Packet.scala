@@ -6,7 +6,7 @@ import ru.makkarpov.scamp.cipher.StreamCipher
 object Packet {
   sealed abstract class Meta extends Packet
 
-  case class EnableEncryption(key: ByteString, factory: StreamCipher.Factory) extends Meta
+  case class EnableEncryption(key: ByteString, factory: StreamCipher.Factory, sendBefore: Option[Packet]) extends Meta
 }
 
 abstract class Packet

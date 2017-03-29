@@ -30,10 +30,15 @@ object CipherStage extends GraphStage[BidiShape[ByteString, ByteString, CipherMe
       setHandler(plainIn, new InHandler {
         override def onPush(): Unit = grab(plainIn) match {
           case CipherMessage.Data(data) => emit(netOut, outgoingCipher(data))
-          case CipherMessage.Enable(key, factory) =>
+          case CipherMessage.Enable(key, factory, None) =>
             incomingCipher = factory(key, forEncryption = false)
             outgoingCipher = factory(key, forEncryption = true)
             pull(plainIn)
+
+          case CipherMessage.Enable(key, factory, Some(data)) =>
+            emit(netOut, data)
+            incomingCipher = factory(key, forEncryption = false)
+            outgoingCipher = factory(key, forEncryption = true)
         }
       })
 

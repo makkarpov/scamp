@@ -1,11 +1,15 @@
 package ru.makkarpov.scamp
 
+import ru.makkarpov.scamp.protocol.game.GameState
 import ru.makkarpov.scamp.protocol.handshake.HandshakingState
+import ru.makkarpov.scamp.protocol.login.LoginState
 import ru.makkarpov.scamp.protocol.status.StatusState
 
 object ProtocolState {
   val Handshaking: ProtocolState = HandshakingState
   val Status: ProtocolState = StatusState
+  val Login: ProtocolState = LoginState
+  val Game: ProtocolState = GameState
 }
 
 abstract class ProtocolState {

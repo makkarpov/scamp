@@ -6,6 +6,7 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Keep, Tcp}
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler, GraphStageWithMaterializedValue => GS}
 import akka.stream._
+import akka.stream.javadsl.BidiFlow
 import akka.stream.scaladsl.Tcp.OutgoingConnection
 import akka.util.ByteString
 import ru.makkarpov.scamp.handshake.PacketHandshake
@@ -17,9 +18,16 @@ import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 object ServerPinger {
-  def ping(addr: InetSocketAddress, timeout: Duration = Duration.Inf)
+  def ping(addr: InetSocketAddress, timeout: Duration = Duration.Inf, readTimeout: Duration = Duration.Inf)
           (implicit sys: ActorSystem, mat: ActorMaterializer): Future[ServerPingResult] =
-    Scamp.connect(addr, timeout).joinMat(new ServerPinger(addr))(Keep.right).run()
+  {
+    val base = Scamp.connect(addr, timeout)
+    val timed =
+      if (readTimeout.isFinite()) base.join(BidiFlow.bidirectionalIdleTimeout[Packet, Packet](readTimeout.asInstanceOf[FiniteDuration]))
+      else base
+
+    timed.joinMat(new ServerPinger(addr))(Keep.right).run()
+  }
 }
 
 class ServerPinger(addr: InetSocketAddress) extends GS[FlowShape[Packet, Packet], Future[ServerPingResult]] {

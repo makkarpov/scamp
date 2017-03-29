@@ -1,5 +1,6 @@
 macros/target
 project/target
+misc/target
 
 ### Scala ###
 *.class

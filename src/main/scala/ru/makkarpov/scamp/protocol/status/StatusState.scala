@@ -1,7 +1,7 @@
-package ru.makkarpov.scamp.status
+package ru.makkarpov.scamp.protocol.status
 
-import ru.makkarpov.scamp.status.client.{StatusPong, StatusResponse}
-import ru.makkarpov.scamp.status.server.{StatusPing, StatusRequest}
+import ru.makkarpov.scamp.protocol.status.client.{StatusPong, StatusResponse}
+import ru.makkarpov.scamp.protocol.status.server.{StatusPing, StatusRequest}
 import ru.makkarpov.scamp.{Packet, PacketSerializer, ProtocolState}
 
 object StatusState extends ProtocolState {

@@ -4,10 +4,9 @@ import akka.stream.{Attributes, BidiShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 import ru.makkarpov.scamp.cipher.CipherMessage
-import ru.makkarpov.scamp.handshake.PacketHandshake
-import ru.makkarpov.scamp.handshake.PacketHandshake.NextState
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake.NextState
 import ru.makkarpov.scamp.{Packet, ProtocolState}
-import ru.makkarpov.scamp.tags.{PacketTag, TaggedPacket}
 
 object EncodingStage {
   val Server = new EncodingStage(isServer = true)

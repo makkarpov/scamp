@@ -8,10 +8,10 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, Keep}
 import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler, GraphStageWithMaterializedValue => GS}
 import ru.makkarpov.scamp.Packet
-import ru.makkarpov.scamp.handshake.PacketHandshake
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake
 import ru.makkarpov.scamp.net.TimeoutStage
-import ru.makkarpov.scamp.status.client.{StatusPong, StatusResponse}
-import ru.makkarpov.scamp.status.server.{StatusPing, StatusRequest}
+import ru.makkarpov.scamp.protocol.status.client.{StatusPong, StatusResponse}
+import ru.makkarpov.scamp.protocol.status.server.{StatusPing, StatusRequest}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}

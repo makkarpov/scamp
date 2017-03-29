@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets
 
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
-import ru.makkarpov.scamp.handshake.PacketHandshake
-import ru.makkarpov.scamp.handshake.PacketHandshake.NextState
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake.NextState
 
 class HandshakingSuite extends FlatSpec with Matchers {
   it must "read handshake packets" in {

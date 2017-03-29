@@ -1,7 +1,7 @@
 package ru.makkarpov.scamp
 
-import ru.makkarpov.scamp.handshake.HandshakingState
-import ru.makkarpov.scamp.status.StatusState
+import ru.makkarpov.scamp.protocol.handshake.HandshakingState
+import ru.makkarpov.scamp.protocol.status.StatusState
 
 object ProtocolState {
   val Handshaking: ProtocolState = HandshakingState

@@ -1,7 +1,7 @@
-package ru.makkarpov.scamp.handshake
+package ru.makkarpov.scamp.protocol.handshake
 
 import ru.makkarpov.scamp.{Packet, ProtocolState}
-import ru.makkarpov.scamp.handshake.PacketHandshake.NextState
+import ru.makkarpov.scamp.protocol.handshake.PacketHandshake.NextState
 
 object PacketHandshake {
   type NextState = NextState.Value

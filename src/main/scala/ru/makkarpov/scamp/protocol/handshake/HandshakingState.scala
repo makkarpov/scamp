@@ -1,4 +1,4 @@
-package ru.makkarpov.scamp.handshake
+package ru.makkarpov.scamp.protocol.handshake
 
 import ru.makkarpov.scamp.{Packet, PacketSerializer, ProtocolState}
 

@@ -1,4 +1,4 @@
-package ru.makkarpov.scamp.status
+package ru.makkarpov.scamp.protocol.status
 
 import ru.makkarpov.scamp.Packet
 

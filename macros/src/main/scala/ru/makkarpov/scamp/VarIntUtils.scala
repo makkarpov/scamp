@@ -39,6 +39,18 @@ object VarIntUtils {
     r
   }
 
+  def writeVarInt(dst: ByteStringBuilder, i: Int): Unit = {
+    if (i == 0) dst.putByte(0)
+
+    var data = i
+    while (data != 0) {
+      if ((data & ~0x7F) != 0) dst.putByte((0x80 | (data & 0x7F)).toByte)
+      else dst.putByte(data.toByte)
+
+      data >>>= 7
+    }
+  }
+
   def writeVarLong(dst: ByteStringBuilder, l: Long): Unit = {
     if (l == 0) dst.putByte(0)
 

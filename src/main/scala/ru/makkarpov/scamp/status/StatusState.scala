@@ -17,7 +17,7 @@ object StatusState extends ProtocolState {
 
   override val clientPackets: PacketSerializer[Packet] = protocol[Packet](
     0 -> packet[StatusResponse](
-      "json"      -> string(maxLength = 4096)
+      "json"      -> string(maxLength = 32768)
     ),
     1 -> packet[StatusPong](
       "payload"   -> long

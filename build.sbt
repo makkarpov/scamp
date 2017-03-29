@@ -3,7 +3,7 @@ publishArtifact := false
 enablePlugins(CrossPerProjectPlugin)
 
 val commonSettings = Seq(
-  organization := "ru.makkarpov",
+  organization := "ru.makkarpov.scamp",
   version := "1.0",
 
   scalaVersion := "2.11.7",
@@ -25,6 +25,17 @@ lazy val macros = project
 lazy val root = project.in(file("."))
   .settings(commonSettings)
   .settings(
-    name := "scamp"
+    name := "scamp",
+
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-stream" % "2.4.17"
+    )
   )
   .dependsOn(macros)
+
+lazy val misc = project
+  .settings(commonSettings)
+  .settings(
+    name := "scamp-misc"
+  )
+  .dependsOn(root)

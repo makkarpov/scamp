@@ -14,5 +14,5 @@ class VarIntType(x: blackbox.Context)(rawArgs: Seq[blackbox.Context#Tree]) exten
   override def makeReader(src: c.universe.Tree): c.universe.Tree = q"$varIntUtils.readVarInt($src)"
 
   override def makeWriter(dst: c.universe.Tree, data: c.universe.Tree): c.universe.Tree =
-    q"$varIntUtils.writeVarLong($dst, $data.toLong)"
+    q"$varIntUtils.writeVarInt($dst, $data)"
 }

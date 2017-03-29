@@ -13,18 +13,23 @@ object PacketSerializer {
     def packetId(packet: T): Int
     def packetSerializer(id: Int): InternalSerializer[_ <: T]
 
-    override def write(packet: T): (Int, ByteString) = {
+    override def write(packet: T): ByteString = {
       val id = packetId(packet)
       val dst = new ByteStringBuilder
+      VarIntUtils.writeVarInt(dst, id)
       packetSerializer(id).asInstanceOf[InternalSerializer[T]].write(packet, dst)
-      id -> dst.result()
+      dst.result()
     }
 
-    override def read(id: Int, src: ByteString): T = packetSerializer(id).read(src.iterator)
+    override def read(src: ByteString): T = {
+      val iter = src.iterator
+      val id = VarIntUtils.readVarInt(iter)
+      packetSerializer(id).read(iter)
+    }
   }
 }
 
 trait PacketSerializer[T] {
-  def write(packet: T): (Int, ByteString)
-  def read(id: Int, src: ByteString): T
+  def write(packet: T): ByteString
+  def read(src: ByteString): T
 }

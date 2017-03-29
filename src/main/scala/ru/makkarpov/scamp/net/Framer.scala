@@ -2,27 +2,27 @@ package ru.makkarpov.scamp.net
 
 import akka.util.ByteString
 import ru.makkarpov.scamp.VarIntUtils._
-import ru.makkarpov.scamp.net.Codec.ReadPhase
+import ru.makkarpov.scamp.net.Framer.ReadPhase
 
-case object Codec {
+case object Framer {
   object ReadPhase extends Enumeration {
     val Length, Data = Value
   }
 
-  def empty = new Codec()
+  def empty = new Framer()
 }
 
 /**
  * Creation date: 22.10.2015
  * Copyright (c) harati
  */
-case class Codec(
+case class Framer(
   phase:          ReadPhase.Value = ReadPhase.Length,
   buffer:         ByteString      = ByteString.empty,
   expectedLength: Int             = 0
 ) {
-  def parse(phase: ReadPhase.Value, f: ByteString, expectedLength: Int): (Codec, List[ByteString]) = {
-    def empty = (Codec(phase, f, expectedLength), List.empty[ByteString])
+  def parse(phase: ReadPhase.Value, f: ByteString, expectedLength: Int): (Framer, List[ByteString]) = {
+    def empty = (Framer(phase, f, expectedLength), List.empty[ByteString])
     phase match {
       case ReadPhase.Length ⇒ decodeVarInt(f, 0).map(_.toInt) match {
         case None         ⇒ empty
@@ -39,5 +39,5 @@ case class Codec(
     }
   }
 
-  def apply(f: ByteString): (Codec, List[ByteString]) = parse(phase, buffer concat f, expectedLength)
+  def apply(f: ByteString): (Framer, List[ByteString]) = parse(phase, buffer concat f, expectedLength)
 }

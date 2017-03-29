@@ -2,16 +2,22 @@ package ru.makkarpov.scamp
 
 import java.net.InetSocketAddress
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.Tcp.OutgoingConnection
 import akka.stream.scaladsl.{Flow, Tcp}
-import ru.makkarpov.scamp.net.{PacketEncoder, PacketFramer}
+import ru.makkarpov.scamp.cipher.CipherStage
+import ru.makkarpov.scamp.net.{EncodingStage, FramingStage}
 
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 object Scamp {
-  def connect(address: InetSocketAddress, timeout: Duration = Duration.Inf)
-             (implicit sys: ActorSystem): Flow[Packet, Packet, Future[OutgoingConnection]] =
-    Tcp().outgoingConnection(address, connectTimeout = timeout).join(new PacketFramer).join(new PacketEncoder(false))
+  def client(remoteAddr: InetSocketAddress, connectTimeout: FiniteDuration = 10 second span)
+            (implicit sys: ActorSystem): Flow[Packet, Packet, NotUsed] =
+    Tcp().outgoingConnection(
+      remoteAddress = remoteAddr,
+      connectTimeout = connectTimeout,
+      halfClose = false
+    ).join(CipherStage).join(new FramingStage).join(EncodingStage.Client)
+      .mapMaterializedValue(_ => NotUsed)
+
 }

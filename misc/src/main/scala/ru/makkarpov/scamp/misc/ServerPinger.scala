@@ -2,32 +2,24 @@ package ru.makkarpov.scamp.misc
 
 import java.net.InetSocketAddress
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Keep, Tcp}
-import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler, GraphStageWithMaterializedValue => GS}
 import akka.stream._
-import akka.stream.javadsl.BidiFlow
-import akka.stream.scaladsl.Tcp.OutgoingConnection
-import akka.util.ByteString
+import akka.stream.scaladsl.{Flow, Keep}
+import akka.stream.stage.{GraphStageLogic, InHandler, OutHandler, GraphStageWithMaterializedValue => GS}
+import ru.makkarpov.scamp.Packet
 import ru.makkarpov.scamp.handshake.PacketHandshake
+import ru.makkarpov.scamp.net.TimeoutStage
 import ru.makkarpov.scamp.status.client.{StatusPong, StatusResponse}
 import ru.makkarpov.scamp.status.server.{StatusPing, StatusRequest}
-import ru.makkarpov.scamp.{Packet, Scamp}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 object ServerPinger {
-  def ping(addr: InetSocketAddress, timeout: Duration = Duration.Inf, readTimeout: Duration = Duration.Inf)
+  def ping(connection: Flow[Packet, Packet, NotUsed], addr: InetSocketAddress, readTimeout: FiniteDuration = 10 second span)
           (implicit sys: ActorSystem, mat: ActorMaterializer): Future[ServerPingResult] =
-  {
-    val base = Scamp.connect(addr, timeout)
-    val timed =
-      if (readTimeout.isFinite()) base.join(BidiFlow.bidirectionalIdleTimeout[Packet, Packet](readTimeout.asInstanceOf[FiniteDuration]))
-      else base
-
-    timed.joinMat(new ServerPinger(addr))(Keep.right).run()
-  }
+    connection.join(TimeoutStage(readTimeout)).joinMat(new ServerPinger(addr))(Keep.right).run()
 }
 
 class ServerPinger(addr: InetSocketAddress) extends GS[FlowShape[Packet, Packet], Future[ServerPingResult]] {
@@ -72,7 +64,6 @@ class ServerPinger(addr: InetSocketAddress) extends GS[FlowShape[Packet, Packet]
         }
 
         override def onUpstreamFailure(ex: Throwable): Unit = {
-          println("Pinger: " + ex)
           completeStage()
           promise.trySuccess(ServerPingResult.Failure)
         }

@@ -7,7 +7,7 @@ import akka.util.{ByteString, ByteStringBuilder}
 import ru.makkarpov.scamp.VarIntUtils
 
 object Compressor {
-  val empty = new Compressor {
+  val identity = new Compressor {
     override def decompress(bs: ByteString): ByteString = bs
     override def compress(bs: ByteString): ByteString = bs
   }

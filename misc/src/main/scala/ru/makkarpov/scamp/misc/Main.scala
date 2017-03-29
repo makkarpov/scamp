@@ -4,6 +4,7 @@ import java.net.InetSocketAddress
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import ru.makkarpov.scamp.Scamp
 
 import scala.concurrent.duration._
 
@@ -12,5 +13,6 @@ object Main extends App {
   implicit val mat = ActorMaterializer()
   import system.dispatcher
 
-  ServerPinger.ping(new InetSocketAddress("localhost", 25100), readTimeout = 10 second span).onComplete(println)
+  val addr = new InetSocketAddress("123.123.123.123", 25565)
+  ServerPinger.ping(Scamp.client(addr), addr).onComplete(println)
 }

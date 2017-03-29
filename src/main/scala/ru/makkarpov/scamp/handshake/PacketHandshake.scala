@@ -1,6 +1,6 @@
 package ru.makkarpov.scamp.handshake
 
-import ru.makkarpov.scamp.Packet
+import ru.makkarpov.scamp.{Packet, ProtocolState}
 import ru.makkarpov.scamp.handshake.PacketHandshake.NextState
 
 object PacketHandshake {
@@ -8,6 +8,11 @@ object PacketHandshake {
   object NextState extends Enumeration {
     val Status = Value(1, "status")
     val Login = Value(2, "login")
+
+    def toProtocol(v: Value): ProtocolState = v match {
+      case Status => ProtocolState.Status
+      case Login => throw new RuntimeException("No login state yet")
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-package ru.makkarpov.scamp;
+package ru.makkarpov.scamp.cipher;
 
 /**
  * an implementation of the AES (Rijndael), from FIPS-197.
